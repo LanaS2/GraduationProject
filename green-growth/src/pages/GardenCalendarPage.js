@@ -5,92 +5,74 @@ import '../styles/Calendar.css';
 import Menu from '../components/Menu';
 
 const Calendar = () => {
-  const [state, setState] = useState({
-    startDate: new Date(),
-    selectedEvent: null,
-    showEventSelector: false,
-    toDoList: [],
-    isSelectionMode: false,
-    selectedItems: []
-  });
+  const [startDate, setStartDate] = useState(new Date());
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [showEventSelector, setShowEventSelector] = useState(false);
+  const [toDoList, setToDoList] = useState([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]);
 
   useEffect(() => {
     const savedToDoList = localStorage.getItem('toDoList');
     if (savedToDoList) {
-      setState(prevState => ({
-        ...prevState,
-        toDoList: JSON.parse(savedToDoList)
-      }));
+      setToDoList(JSON.parse(savedToDoList));
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('toDoList', JSON.stringify(state.toDoList));
-  }, [state.toDoList]);
-
+    localStorage.setItem('toDoList', JSON.stringify(toDoList));
+  }, [toDoList]);
+  
   useEffect(() => {
     const interval = setInterval(() => {
-      setState(prevState => {
-        const newList = prevState.toDoList.map(task => {
-          if (!task.done && new Date(task.date) < new Date()) {
-            return { ...task, done: false }; 
-          }
-          return task;
-        });
-        return { ...prevState, toDoList: newList };
+      const newList = toDoList.map(task => {
+        if (!task.done && new Date(task.date) < new Date()) {
+          return { ...task, done: false }; 
+        }
+        return task;
       });
+      setToDoList(newList);
     }, 1000);
     return () => clearInterval(interval);
-  }, [state.toDoList]);
+  }, [toDoList]);
+  
 
   const handleDateClick = date => {
-    setState(prevState => ({
-      ...prevState,
-      startDate: date,
-      showEventSelector: true
-    }));
+    setStartDate(date);
+    setShowEventSelector(true);
   };
 
   const handleEventSelect = event => {
-    setState(prevState => ({
-      ...prevState,
-      selectedEvent: event,
-      showEventSelector: false,
-      toDoList: [...prevState.toDoList, { event, date: prevState.startDate.toLocaleDateString(), done: false }]
-    }));
+    setSelectedEvent(event);
+    setShowEventSelector(false);
+    setToDoList([...toDoList, { event, date: startDate.toLocaleDateString(), done: false }]);
   };
 
   const toggleSelectionMode = () => {
-    setState(prevState => ({
-      ...prevState,
-      isSelectionMode: !prevState.isSelectionMode,
-      selectedItems: []
-    }));
+    setIsSelectionMode(!isSelectionMode);
+    setSelectedItems([]);
   };
 
   const handleDelete = () => {
-    setState(prevState => {
-      const newList = prevState.toDoList.filter((_, index) => !prevState.selectedItems.includes(index));
-      return { ...prevState, toDoList: newList, selectedItems: [], isSelectionMode: false };
-    });
+    const newList = toDoList.filter((_, index) => !selectedItems.includes(index));
+    setToDoList(newList);
+    setSelectedItems([]);
+    setIsSelectionMode(false);
   };
 
-  const handleDone = index => {
-    setState(prevState => {
-      const newList = [...prevState.toDoList];
-      newList[index].done = true;
-      newList[index].doneAt = new Date();
-      return { ...prevState, toDoList: newList };
-    });
+  const handleDone = (index) => {
+    const newList = [...toDoList];
+    newList[index].done = true;
+    newList[index].doneAt = new Date();
+    setToDoList(newList);
   };
 
   const handleItemCheckboxChange = (index, checked) => {
-    setState(prevState => ({
-      ...prevState,
-      selectedItems: checked
-        ? [...prevState.selectedItems, index]
-        : prevState.selectedItems.filter(itemIndex => itemIndex !== index)
-    }));
+    if (checked) {
+      setSelectedItems([...selectedItems, index]);
+    } else {
+      setSelectedItems(selectedItems.filter(itemIndex => itemIndex !== index));
+    }
   };
 
   const getEventColor = event => {
@@ -114,16 +96,12 @@ const Calendar = () => {
 
   const categorizeItems = (toDoList) => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const thisWeek = new Date();
     thisWeek.setDate(thisWeek.getDate() + 7);
-    thisWeek.setHours(0, 0, 0, 0);
     const thisMonth = new Date();
     thisMonth.setMonth(thisMonth.getMonth() + 1);
-    thisMonth.setHours(0, 0, 0, 0);
     const thisYear = new Date();
     thisYear.setFullYear(thisYear.getFullYear() + 1);
-    thisYear.setHours(0, 0, 0, 0);
   
     const todayItems = [];
     const thisWeekItems = [];
@@ -133,7 +111,6 @@ const Calendar = () => {
   
     toDoList.forEach((item, index) => {
       const itemDate = new Date(item.date);
-      itemDate.setHours(0, 0, 0, 0);
       if (itemDate <= today) {
         todayItems.push({ ...item, index });
       } else if (itemDate <= thisWeek) {
@@ -155,8 +132,9 @@ const Calendar = () => {
       'Unfinished Tasks': unfinishedTasks
     };
   };
-  
-  const categorizedItems = categorizeItems(state.toDoList);
+
+  const categorizedItems = categorizeItems(toDoList);
+
 
   return (
     <div className="calendar-container">
@@ -164,15 +142,15 @@ const Calendar = () => {
         <Menu />
       </header>
       <DatePicker
-        selected={state.startDate}
+        selected={startDate}
         onChange={date => handleDateClick(date)}
         inline
       />
-      {state.showEventSelector && (
+      {showEventSelector && (
         <div className="event-selector">
           <div className="event-selector-inner">
             <label htmlFor="events" className="event-label">Select Task:</label>
-            <select id="events" value={state.selectedEvent} onChange={e => handleEventSelect(e.target.value)} className="event-select">
+            <select id="events" value={selectedEvent} onChange={e => handleEventSelect(e.target.value)} className="event-select">
               <option value="">Select Task</option>
               <option value="Irrigation">Irrigation</option>
               <option value="Fertilization">Fertilization</option>
@@ -186,10 +164,10 @@ const Calendar = () => {
       )}
       <div className="to-do-list">
         <div className="list-header">
-          {!state.isSelectionMode && (
+          {!isSelectionMode && (
             <button onClick={toggleSelectionMode}>Select Items</button>
           )}
-          {state.isSelectionMode && (
+          {isSelectionMode && (
             <>
               <button onClick={toggleSelectionMode}>Cancel Selection</button>
               <button onClick={handleDelete}>Delete</button>
@@ -202,17 +180,17 @@ const Calendar = () => {
             <h3 id={category}>{category}</h3>
             <ul className="to-do-ul">
               {categorizedItems[category].map(({ event, date, index, done }) => (
-                <li key={index} className={`to-do-li ${state.selectedItems.includes(index) ? 'selected' : ''} ${done ? 'done' : ''}`}>
-                  {state.isSelectionMode && (
+                <li key={index} className={`to-do-li ${selectedItems.includes(index) ? 'selected' : ''} ${done ? 'done' : ''}`}>
+                  {isSelectionMode && (
                     <input
                       type="checkbox"
-                      checked={state.selectedItems.includes(index)}
+                      checked={selectedItems.includes(index)}
                       onChange={e => handleItemCheckboxChange(index, e.target.checked)}
                     />
                   )}
                   <span className="event-color" style={{ backgroundColor: getEventColor(event) }}></span>
                   <span>{date}: {event}</span>
-                  {!done && !state.isSelectionMode && <button onClick={() => handleDone(index)}>Done</button>}
+                  {!done && !isSelectionMode && <button onClick={() => handleDone(index)}>Done</button>}
                 </li>
               ))}
             </ul>
